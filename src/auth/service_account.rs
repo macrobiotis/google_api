@@ -18,7 +18,7 @@ pub struct ServiceAccountCredentials {
     private_key_id: String,
     private_key: String,
     client_email: String,
-    client_id: String,
+    pub client_id: String,
     auth_uri: String,
     token_uri: String,
     auth_provider_x509_cert_url: String,
@@ -37,7 +37,7 @@ pub struct ServiceAccountCredentials {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Token {
     expiration_time: i64,
-    access_token: String,
+    pub access_token: String,
 }
 
 impl ServiceAccountCredentials {
@@ -77,35 +77,81 @@ impl ServiceAccountCredentials {
     }
 
     /// Get an access token for the service account using the scopes and subject specified.
-    pub async fn get_access_token(&mut self) -> Result<String> {
+    // pub async fn get_access_token(&mut self) -> Result<String> {
+    //     let now = Local::now();
+    //     let iat = now.timestamp();
+        
+    //     match self.token.clone() {
+    //         Some(token) => {
+    //             if iat > token.expiration_time {
+    //                 let jwt = self.make_assertion()?;
+    //                 let access_token = self.request_token(&jwt).await?;
+    //                 self.token = Some(Token{
+    //                     expiration_time: (now + Duration::minutes(58)).timestamp(),
+    //                     access_token: access_token.clone(),
+    //                 });
+    //                 return Ok(access_token);
+    //             } else {
+    //                 return Ok(token.access_token.clone());
+    //             }
+    //         },
+    //         None => {
+    //             let jwt = self.make_assertion()?;
+    //             println!("{}", "-token");
+    //             let access_token = self.request_token(&jwt).await?;
+    //             self.token = Some(Token{
+    //                 expiration_time: (now + Duration::minutes(58)).timestamp(),
+    //                 access_token: access_token.clone(),
+    //             });
+    //             return Ok(access_token);
+    //         }
+    //     };
+    // }
+
+
+    /// Get an access token for the service account using the scopes and subject specified.
+        pub async fn get_access_token(&mut self) -> Result<String> {
+        // pub async fn get_access_token(&mut self) -> Result<String, Box<dyn std::error::Error>> {
         let now = Local::now();
         let iat = now.timestamp();
-
-        match self.token.clone() {
-            Some(token) => {
-                if iat > token.expiration_time {
-                    let jwt = self.make_assertion()?;
-                    let access_token = self.request_token(&jwt).await?;
-                    self.token = Some(Token{
-                        expiration_time: (now + Duration::minutes(58)).timestamp(),
-                        access_token: access_token.clone(),
-                    });
-                    return Ok(access_token);
-                } else {
-                    return Ok(token.access_token.clone());
-                }
-            },
-            None => {
+    
+        // Überprüfe, ob bereits ein Token existiert
+        if let Some(token) = &self.token {
+            // Überprüfe, ob das Token abgelaufen ist
+            if iat > token.expiration_time {
+                // Erstelle ein neues JWT, wenn das Token abgelaufen ist
                 let jwt = self.make_assertion()?;
                 let access_token = self.request_token(&jwt).await?;
-                self.token = Some(Token{
+                
+                // Aktualisiere das Token in der Struktur
+                self.token = Some(Token {
                     expiration_time: (now + Duration::minutes(58)).timestamp(),
                     access_token: access_token.clone(),
                 });
-                return Ok(access_token);
+    
+                // Rückgabe des neuen Tokens
+                Ok(access_token)
+            } else {
+                // Rückgabe des vorhandenen Tokens, wenn es noch gültig ist
+                Ok(token.access_token.clone())
             }
-        };
+        } else {
+            // Erstelle ein neues JWT, wenn kein Token existiert
+            let jwt = self.make_assertion()?;
+            let access_token = self.request_token(&jwt).await?;
+            
+            // Speichere das neue Token in der Struktur
+            self.token = Some(Token {
+                expiration_time: (now + Duration::minutes(58)).timestamp(),
+                access_token: access_token.clone(),
+            });
+    
+            // Rückgabe des neuen Tokens
+            Ok(access_token)
+        }
     }
+    
+
 
     fn make_assertion(&self) -> Result<String> {
         let scope: String = match self.scopes.clone() {

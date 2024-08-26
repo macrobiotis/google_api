@@ -1,6 +1,7 @@
 pub mod translate_service;
 pub mod route_service;
 pub mod service_error;
+pub mod gemini_service;
 
 use anyhow::{bail, Result};
 use reqwest::{header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE}, RequestBuilder};
@@ -31,7 +32,6 @@ impl ServiceBase {
 
     async fn create_headers(&mut self) -> Result<HeaderMap>{
         let mut headers = HeaderMap::new();
-
         if let Some(api_key) = &self.api_key {
             headers.insert("X-goog-api-key", HeaderValue::from_str(&api_key)?);
         } else if let Some(mut credentials) = self.service_account_credentials.to_owned() {
@@ -41,7 +41,7 @@ impl ServiceBase {
         } else {
             bail!("Unknown Auth Method!")
         };
-
+        
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json; charset=utf-8"));
         Ok(headers)
     }
